@@ -1,0 +1,33 @@
+﻿# Build output
+bin/
+obj/
+artifacts/
+bin-*/
+
+# Editors and user configuration
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Machine data and verification output
+*.log
+*.sqlite
+*.sqlite-*
+*-diagnostics.json
+diagnostics.json
+overhead-*.json
+self-test*.txt
+ui-*/
+ui-*.png
+settings.json
+
+# Credentials and local configuration
+.env
+.env.*
+*.pfx
+*.p12
+*.zip
+
+# Published installer payload
+install/app/
