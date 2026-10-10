@@ -152,4 +152,4 @@ The current version is **5.4.6**. `PowerMonitor.csproj` is the version source us
 
 Copyright © 2026 Scott Sheen / Sheen Consulting International.
 
-No open-source license has been selected for this project. Public availability alone does not grant permission to reuse or redistribute the source. Third-party packages remain governed by their own licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Power Monitor is open source under the [MIT License](LICENSE). You may use, modify and redistribute the software subject to the terms of that license. Third-party packages remain governed by their own licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
