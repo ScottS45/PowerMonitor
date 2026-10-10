@@ -8,6 +8,21 @@ Built in **C# with .NET 8 and Windows Forms**.
 
 [Installation](install/README.md) · [Release notes](CHANGELOG.md) · [Development history](docs/DEVELOPMENT-HISTORY.md)
 
+## Screenshots
+
+### Overview
+![Power Monitor overview](docs/screenshots/overview.webp)
+
+### Process activity
+![Power Monitor process activity](docs/screenshots/processes.webp)
+
+### Battery telemetry
+![Power Monitor battery telemetry](docs/screenshots/battery.webp)
+
+### Settings and hardware capabilities
+![Power Monitor settings and hardware capabilities](docs/screenshots/settings.webp)
+
+
 ## Key features
 
 - Live battery power, capacity, charging status, health, wear and session totals when supported by the machine.
