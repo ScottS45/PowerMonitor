@@ -1,0 +1,140 @@
+name: Publish Power Monitor v5.4.6
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/publish-v5.4.6.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore PowerMonitor.csproj
+
+      - name: Build framework-dependent package
+        shell: pwsh
+        run: |
+          dotnet publish PowerMonitor.csproj -c Release -r win-x64 --self-contained false -o artifacts/framework/app
+
+      - name: Run self-tests
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'artifacts\framework\app\PowerMonitor.exe'
+          $report = Join-Path $PWD 'artifacts\self-test.txt'
+          Start-Process -FilePath $exe -ArgumentList @('--self-test','--output',$report) -WindowStyle Hidden -Wait
+          Get-Content -LiteralPath $report
+          if ((Get-Content -LiteralPath $report -Raw) -match '(?im)^FAIL') {
+            throw 'Power Monitor self-tests reported a failure.'
+          }
+
+      - name: Build self-contained package
+        shell: pwsh
+        run: |
+          dotnet publish PowerMonitor.csproj -c Release -r win-x64 --self-contained true -o artifacts/standalone/app
+
+      - name: Stage release packages
+        shell: pwsh
+        run: |
+          $version = '5.4.6'
+          $fd = Join-Path $PWD "artifacts\PowerMonitor-$version-Windows-x64"
+          $sc = Join-Path $PWD "artifacts\PowerMonitor-$version-Windows-x64-standalone"
+
+          New-Item -ItemType Directory -Path $fd -Force | Out-Null
+          New-Item -ItemType Directory -Path $sc -Force | Out-Null
+
+          Copy-Item -Recurse -Force 'artifacts\framework\app' (Join-Path $fd 'app')
+          Copy-Item -Recurse -Force 'artifacts\standalone\app' (Join-Path $sc 'app')
+
+          foreach ($dir in @($fd, $sc)) {
+            Copy-Item 'install\Install.ps1' $dir
+            Copy-Item 'install\Check-Requirements.ps1' $dir
+            Copy-Item 'install\README.md' (Join-Path $dir 'INSTALL.md')
+            Copy-Item 'README.md' $dir
+            Copy-Item 'CHANGELOG.md' $dir
+            Copy-Item 'LICENSE' $dir
+            Copy-Item 'THIRD-PARTY-NOTICES.md' $dir
+          }
+
+          Compress-Archive -Path "$fd\*" -DestinationPath "artifacts\PowerMonitor-$version-Windows-x64.zip" -Force
+          Compress-Archive -Path "$sc\*" -DestinationPath "artifacts\PowerMonitor-$version-Windows-x64-standalone.zip" -Force
+
+          $files = @(
+            "artifacts\PowerMonitor-$version-Windows-x64.zip",
+            "artifacts\PowerMonitor-$version-Windows-x64-standalone.zip"
+          )
+
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash.ToLowerInvariant()
+            "$hash  $([IO.Path]::GetFileName($file))"
+          }
+          $lines | Set-Content -Encoding ascii "artifacts\PowerMonitor-$version-SHA256.txt"
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'v5.4.6'
+
+          if (gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null) {
+            Write-Host "Release $tag already exists."
+            exit 0
+          }
+
+          @'
+          ## Power Monitor 5.4.6
+
+          Windows desktop and tray application for understanding battery drain and application activity.
+
+          ### Highlights
+
+          - Live battery power, health, capacity, charging status and session totals.
+          - Process-level CPU, GPU and I/O activity.
+          - Estimated application watts and mAh with measured and estimated values kept distinct.
+          - Windows energy attribution and optional hardware-energy diagnostics.
+          - Battery-based calibration.
+          - SQLite history and configurable battery-drain alerts.
+          - Low-power monitoring mode.
+          - Built-in regression/self-tests.
+
+          ### Downloads
+
+          **PowerMonitor-5.4.6-Windows-x64.zip**
+          - Smaller framework-dependent package.
+          - Requires the .NET 8 Desktop Runtime for Windows x64.
+
+          **PowerMonitor-5.4.6-Windows-x64-standalone.zip**
+          - Self-contained Windows x64 package.
+          - Includes the required .NET runtime.
+
+          Both packages include the installer/check scripts and place the published application in the included app folder.
+
+          Verify downloads against **PowerMonitor-5.4.6-SHA256.txt**.
+
+          ### Installation
+
+          Extract the ZIP, open PowerShell in the extracted folder, then run:
+
+              .\Check-Requirements.ps1
+              .\Install.ps1
+
+          Power Monitor is open source under the MIT License.
+          '@ | Set-Content -Encoding utf8 release-notes.md
+
+          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title 'Power Monitor 5.4.6' --notes-file release-notes.md 'artifacts\PowerMonitor-5.4.6-Windows-x64.zip' 'artifacts\PowerMonitor-5.4.6-Windows-x64-standalone.zip' 'artifacts\PowerMonitor-5.4.6-SHA256.txt'
